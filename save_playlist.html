@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your Top & Recent YouTube Songs</title>
+  <style>
+    :root {
+      --bg: #0f0f0f;
+      --card: #1f1f1f;
+      --text: #f1f1f1;
+      --muted: #aaaaaa;
+      --accent: #ff0000;
+      --accent-hover: #cc0000;
+      --border: #333333;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 24px;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 32px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+    }
+    h1 {
+      margin: 0 0 8px 0;
+      font-size: 2rem;
+    }
+    p.subtitle {
+      color: var(--muted);
+      margin: 0 0 20px 0;
+    }
+    .cta-box {
+      background: linear-gradient(135deg, #2a1111, #1a1a1a);
+      border: 1px solid #ff333344;
+      border-radius: 12px;
+      padding: 24px;
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .btn {
+      display: inline-block;
+      background-color: var(--accent);
+      color: #fff;
+      font-size: 1.15rem;
+      font-weight: 600;
+      padding: 14px 28px;
+      border-radius: 28px;
+      text-decoration: none;
+      transition: background-color 0.2s ease, transform 0.1s ease;
+      box-shadow: 0 4px 14px rgba(255, 0, 0, 0.4);
+    }
+    .btn:hover {
+      background-color: var(--accent-hover);
+      transform: scale(1.02);
+    }
+    .instructions {
+      font-size: 0.95rem;
+      color: var(--muted);
+      margin-top: 14px;
+    }
+    .track-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .track-card {
+      display: flex;
+      align-items: center;
+      background: var(--card);
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 10px;
+      border: 1px solid var(--border);
+    }
+    .rank {
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: var(--muted);
+      width: 40px;
+      flex-shrink: 0;
+    }
+    .track-info {
+      flex-grow: 1;
+      overflow: hidden;
+    }
+    .track-title {
+      font-weight: 600;
+      color: #ffffff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-decoration: none;
+      display: block;
+    }
+    .track-title:hover {
+      color: #3ea6ff;
+    }
+    .track-meta {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+    .badge {
+      background-color: #272727;
+      padding: 4px 8px;
+      border-radius: 4px;
+      margin-left: 8px;
+      font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🎵 Your Top & Recent Songs</h1>
+      <p class="subtitle">Ranked by frequency & recency from your YouTube watch history</p>
+    </header>
+
+    <div class="cta-box">
+      <h2>Add to Your YouTube Account</h2>
+      <a class="btn" href="https://www.youtube.com/watch_videos?video_ids=bP8ATWCvqzw,kwjp52YYlwQ,i6uTuA0ANMM,YKcmMmJlKNk,BrfRB6aTZlM,nD1jhw6F-J4,Ans8Y59cvds,PwEvz2FLZ4I,yhbVFtaBmso,XF7TqbbAHrU,JX409_Bq7m0,fSS_R91Nimw,8z8K-VMUIfo,TVbI55pDdaI,mYSOyDXJ6uM,d2p2Lh9AbSY,ycS5PagXvhQ,zlt38OOqwDc,zx_3gmcskZo,t5OKlU0icRs,zDtvoZAHVTY,WnU0lH6C0EA,2vKMY75kvjI,HRcIDSawR18,LpP4rtjACM8,IgaB8n5Bj3U,AB-I3vsUk6g,iwoM7dJIK0w,nP6AkuMMzaI,B1Z1Ss6L_6M,PFVwNbhVqkw,k7_5e8R-d34,AX7t8ZwroHQ,FeR81vxTdBs,zQGPxeFBPg8,V3snyMEbG30,X5THyXnyxv4,M4bYA-xuZ6I,kPtn26x8TZM,qE3DfF66DNA,NHQycTNjqpk,x5fYTPvrz4g,0mXL2UWT6Cg,rTUjC5Kv0c8,1a5nyrMtRsk,fbdxYoFb64g,r8O3URprq1M,8iQU0ubwVdY,HqUeSjsYLNU,qTsAdjULqwg" target="_blank">
+        ▶ Open Playlist on YouTube
+      </a>
+      <p class="instructions">
+        👉 Once YouTube opens, click the <strong>"Save playlist" (+)</strong> button right above the tracklist.<br>
+        It will immediately be saved into your permanent YouTube library under your account!
+      </p>
+    </div>
+
+    <h3>Top 50 Songs Breakdown</h3>
+    <ul class="track-list" id="trackList"></ul>
+  </div>
+
+  <script>
+    fetch('top_50_playlist.json')
+      .then(r => r.json())
+      .then(data => {
+        const list = document.getElementById('trackList');
+        data.songs.forEach((s, idx) => {
+          const li = document.createElement('li');
+          li.className = 'track-card';
+          li.innerHTML = `
+            <div class="rank">${idx + 1}</div>
+            <div class="track-info">
+              <a class="track-title" href="${s.url}" target="_blank">${s.title}</a>
+              <div class="track-meta">
+                <span>${s.channel}</span>
+                <span class="badge">🔥 ${s.total_plays} plays</span>
+                <span class="badge">🕒 Last: ${s.last_played}</span>
+              </div>
+            </div>
+          `;
+          list.appendChild(li);
+        });
+      });
+  </script>
+</body>
+</html>

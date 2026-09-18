@@ -1,0 +1,18 @@
+﻿# Auth & sensitive files
+browser.json
+oauth.json
+client_secret*.json
+*.log
+
+# Data & Takeout exports
+watch-history.json
+takeout*/
+*.zip
+
+# Python
+__pycache__/
+*.py[cod]
+*.class
+.env
+.venv/
+venv/
