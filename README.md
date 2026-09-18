@@ -11,20 +11,20 @@ Extracts your YouTube watch history from Google Takeout, filters out non-music c
 ## Setup & Usage
 
 1. **Install requirements**:
-   \\\ash
+   ```bash
    pip install -r requirements.txt
-   \\\
+   ```
 
-2. **Download your watch history**:
+3. **Download your watch history**:
    - Go to [Google Takeout](https://takeout.google.com).
    - Select **YouTube and YouTube Music** -> **History** -> **JSON** format.
    - Extract \watch-history.json\ into your Downloads folder (or project folder).
 
-3. **Generate Playlist**:
-   \\\ash
+4. **Generate Playlist**:
+   ```
    python generate_playlist.py
-   \\\
+   ```
 
-4. **Save to YouTube**:
+5. **Save to YouTube**:
    - Open \save_playlist.html\ in your browser and click **Open Playlist on YouTube**, then click **Save (+)** in YouTube.
    - Or run \python create_in_account.py\ for programmatic creation.
