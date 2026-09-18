@@ -1,64 +1,90 @@
 import json
 import os
 import re
+import subprocess
 import sys
 from ytmusicapi import YTMusic
-from ytmusicapi.auth.browser import setup_browser
-from ytmusicapi.helpers import initialize_headers
 
 PLAYLIST_FILE = os.path.join(os.path.dirname(__file__), "top_50_playlist.json")
 AUTH_FILE = os.path.join(os.path.dirname(__file__), "browser.json")
+HEADERS_FILE = os.path.join(os.path.dirname(__file__), "headers.txt")
 
-def parse_curl_or_headers(text: str) -> dict:
-    # Check if text is a curl command
-    if "curl" in text and "-H" in text:
-        headers = {}
-        # Match -H 'Key: Value' or -H "Key: Value" or -H $'Key: Value'
-        pattern = r"-H\s+[\$]?['\"]([^:]+):\s*([^'\"]+)['\"]"
-        for key, val in re.findall(pattern, text):
-            headers[key.strip().lower()] = val.strip()
-        
-        # Ensure base headers are present
-        init_h = initialize_headers()
-        init_h.update(headers)
-        return init_h
-    return None
-
-def setup_from_input(auth_file: str):
-    print("\n--- Paste What You Copied ---")
-    print("Paste your 'Copy as cURL (bash)' or Request Headers here.")
-    print("When done, press Enter, then press Ctrl+Z (or Ctrl+D) and press Enter:\n")
+def extract_headers(raw: str) -> dict:
+    headers = {
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+        "accept": "*/*",
+        "content-type": "application/json",
+        "origin": "https://music.youtube.com",
+        "x-goog-authuser": "0"
+    }
     
-    lines = []
-    while True:
-        try:
-            line = input()
-            lines.append(line)
-        except EOFError:
-            break
+    # Extract cookie
+    m_cookie = re.search(r"-H\s+[\$]?['\"]cookie:\s*([^'\"]+)", raw, re.IGNORECASE)
+    if not m_cookie:
+        m_cookie = re.search(r"['\"]?cookie['\"]?\s*[:=]\s*['\"]([^'\"]+)", raw, re.IGNORECASE)
+    if not m_cookie:
+        m_cookie = re.search(r"(?:^|\n)cookie:\s*([^\r\n]+)", raw, re.IGNORECASE)
+        
+    if m_cookie:
+        headers["cookie"] = m_cookie.group(1).strip()
+    
+    # Extract authorization
+    m_auth = re.search(r"SAPISIDHASH\s+([^\s'\"]+)", raw)
+    if m_auth:
+        headers["authorization"] = f"SAPISIDHASH {m_auth.group(1).strip()}"
+    else:
+        m_auth2 = re.search(r"-H\s+[\$]?['\"]authorization:\s*([^'\"]+)", raw, re.IGNORECASE)
+        if m_auth2:
+            headers["authorization"] = m_auth2.group(1).strip()
+
+    # Extract x-goog-authuser
+    m_user = re.search(r"x-goog-authuser[^\d]*(\d+)", raw, re.IGNORECASE)
+    if m_user:
+        headers["x-goog-authuser"] = m_user.group(1)
+        
+    return headers
+
+def get_auth():
+    if os.path.exists(AUTH_FILE):
+        return True
+
+    # If headers.txt already exists with content
+    if os.path.exists(HEADERS_FILE):
+        with open(HEADERS_FILE, "r", encoding="utf-8") as f:
+            raw = f.read()
+    else:
+        raw = ""
+
+    if not raw.strip():
+        print("\n" + "="*70)
+        print("Opening Notepad so you don't have to struggle with terminal pasting!")
+        print("1. In Notepad, simply paste (Ctrl+V) what you copied.")
+        print("2. Save the file (Ctrl+S) and CLOSE Notepad.")
+        print("="*70 + "\n")
+        
+        with open(HEADERS_FILE, "w", encoding="utf-8") as f:
+            f.write("# Paste your cURL or Request Headers below this line, then Save (Ctrl+S) and Close Notepad:\n\n")
             
-    raw = "\n".join(lines).strip()
+        # Open notepad and wait for the user to close it
+        subprocess.run(["notepad.exe", HEADERS_FILE])
+        
+        with open(HEADERS_FILE, "r", encoding="utf-8") as f:
+            raw = f.read()
+
+    headers = extract_headers(raw)
     
-    if not raw:
-        print("Error: No input received.")
+    if "cookie" not in headers:
+        print("❌ Error: Could not find 'cookie' in what was pasted into headers.txt.")
+        print("Please make sure you copied 'Copy as cURL (bash)' or the request headers.")
+        if os.path.exists(HEADERS_FILE):
+            os.remove(HEADERS_FILE)
         return False
+
+    with open(AUTH_FILE, "w", encoding="utf-8") as f:
+        json.dump(headers, f, indent=4)
         
-    # Try curl parsing first
-    parsed_curl = parse_curl_or_headers(raw)
-    if parsed_curl and "cookie" in parsed_curl:
-        with open(auth_file, "w", encoding="utf-8") as f:
-            json.dump(parsed_curl, f, indent=4)
-        print(" Successfully parsed cURL headers and saved authentication!")
-        return True
-        
-    # Fallback to standard ytmusicapi parser
-    try:
-        setup_browser(filepath=auth_file, headers_raw=raw)
-        print(" Successfully parsed headers and saved authentication!")
-        return True
-    except Exception as e:
-        print(f"❌ Could not parse headers: {e}")
-        return False
+    print("✅ Successfully parsed authentication credentials!")
+    return True
 
 def main():
     if not os.path.exists(PLAYLIST_FILE):
@@ -71,27 +97,25 @@ def main():
     songs = data["songs"]
     video_ids = [s["vid"] for s in songs]
 
-    print(f"Ready to create playlist with {len(video_ids)} top & recent songs.")
+    print(f"Found {len(video_ids)} top & recent songs ready for playlist.")
 
-    if not os.path.exists(AUTH_FILE):
-        success = setup_from_input(AUTH_FILE)
-        if not success:
-            return
+    if not get_auth():
+        return
 
     try:
         yt = YTMusic(AUTH_FILE)
         title = "My Top & Recent Songs"
         desc = "Automatically generated from YouTube watch history (most played & recently played)"
-        print(f"\n⏳ Creating playlist: '{title}' in your YouTube account...")
+        print(f"\n⏳ Creating playlist '{title}' in your YouTube account...")
         playlist_id = yt.create_playlist(title=title, description=desc, privacy_status="PRIVATE", video_ids=video_ids)
         print(f"\n🎉 SUCCESS! Playlist created directly in your YouTube account!")
-        print(f"👉 YouTube URL:       https://www.youtube.com/playlist?list={playlist_id}")
-        print(f"👉 YouTube Music URL: https://music.youtube.com/playlist?list={playlist_id}")
+        print(f"👉 YouTube Playlist URL:       https://www.youtube.com/playlist?list={playlist_id}")
+        print(f"👉 YouTube Music Playlist URL: https://music.youtube.com/playlist?list={playlist_id}")
     except Exception as e:
-        print(f"\n❌ Failed to create playlist: {e}")
+        print(f"\n❌ Error creating playlist: {e}")
         if os.path.exists(AUTH_FILE):
             os.remove(AUTH_FILE)
-            print("Removed invalid auth file. Please try again.")
+            print("Resetting invalid auth file so you can try again.")
 
 if __name__ == "__main__":
     main()
